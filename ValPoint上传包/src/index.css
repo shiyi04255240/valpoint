@@ -1,0 +1,418 @@
+/**
+ * index - 入口
+ *
+ * 职责：
+ * - 定义入口相关的样式规则与变量。
+ * - 统一视觉风格并覆盖通用组件。
+ * - 提供响应式或主题化的样式配置。
+ */
+
+/* 用途：全局布局、地图 UI 与通用视觉样式。 */
+/* 区块：基础设置。 */
+body {
+  font-family: 'Microsoft YaHei', 'PingFang SC', 'Helvetica Neue', Arial, sans-serif;
+  background-color: #0f1923;
+  color: white;
+  overflow: hidden;
+  overscroll-behavior: none;
+}
+
+:root {
+  --vp-safe-right: env(safe-area-inset-right, 0px);
+  --vp-safe-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+/* 区块：滚动条。 */
+::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #333;
+  border-radius: 2px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #ff4655;
+}
+
+/* 区块：Leaflet 样式。 */
+.leaflet-container {
+  background: transparent !important;
+  outline: none;
+  z-index: 1;
+}
+
+.leaflet-popup-content-wrapper {
+  background: #1f2326;
+  color: white;
+  border: 1px solid #ff4655;
+  padding: 0;
+}
+
+.leaflet-popup-tip {
+  background: #ff4655;
+}
+
+/* 区块：Leaflet SVG 覆盖层。 */
+.leaflet-image-layer {
+  background: transparent !important;
+}
+
+/* 区块：标记点。 */
+.custom-marker {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275), opacity 0.25s ease, filter 0.25s ease;
+}
+
+.marker-icon-wrapper {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.6);
+  background: #1f2326;
+  border: 2px solid white;
+  overflow: hidden;
+  transition: border-color 0.2s, box-shadow 0.2s, opacity 0.2s,
+    transform 600ms linear(0, 0.089, 0.2809, 0.4953, 0.6868, 0.8358, 0.9391, 1.0021, 1.0343, 1.0455, 1.0439, 1.0361, 1.0262, 1.017, 1.0095, 1.0041, 1.0006, 0.9988, 0.998, 1);
+}
+
+.marker-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.marker-img-skill {
+  width: 80%;
+  height: 80%;
+  object-fit: contain;
+}
+
+/* 区块：标记点状态。 */
+.marker-active .marker-icon-wrapper {
+  border-color: #ff4655;
+  box-shadow: 0 0 15px rgba(255, 70, 85, 0.8);
+  transform: scale(1.2);
+}
+
+/* 无关的点：变暗、缩小且不可点击，点击会穿透到地图（地图点击即恢复原状） */
+.marker-inactive {
+  opacity: 0.22;
+  filter: grayscale(1) brightness(0.8);
+}
+
+.leaflet-marker-icon.marker-inactive {
+  pointer-events: none !important;
+}
+
+.marker-inactive .marker-icon-wrapper {
+  transform: scale(0.82);
+  box-shadow: none;
+}
+
+/* 被点击聚焦的站位/落点：外圈脉冲 */
+.marker-focus .marker-icon-wrapper {
+  transform: scale(1.3);
+  box-shadow: 0 0 0 3px rgba(15, 25, 35, 0.9), 0 0 22px rgba(255, 70, 85, 0.95);
+}
+
+.marker-focus::before {
+  content: '';
+  position: absolute;
+  inset: -7px;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 70, 85, 0.9);
+  pointer-events: none;
+  animation: vp-marker-pulse 1.8s ease-out infinite;
+}
+
+@keyframes vp-marker-pulse {
+  0% {
+    transform: scale(0.85);
+    opacity: 0.9;
+  }
+
+  100% {
+    transform: scale(1.6);
+    opacity: 0;
+  }
+}
+
+/* 关联数量角标：一个站位连着几个落点（或反过来） */
+.marker-link-badge {
+  position: absolute;
+  top: -5px;
+  right: -7px;
+  z-index: 2;
+  min-width: 17px;
+  height: 17px;
+  padding: 0 4px;
+  border-radius: 9px;
+  border: 2px solid #0f1923;
+  background: #ff4655;
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 13px;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+  pointer-events: none;
+  transition: transform 0.25s ease;
+}
+
+.marker-active .marker-link-badge {
+  transform: translate(4px, -4px);
+}
+
+/* 新增/编辑时显示的已有点：可复用的一类亮起，另一类淡出 */
+.marker-ghost {
+  opacity: 0.35;
+  filter: grayscale(0.7);
+}
+
+.marker-ghost .marker-icon-wrapper {
+  border-style: dashed;
+  border-color: rgba(255, 255, 255, 0.7);
+  box-shadow: none;
+}
+
+.marker-ghost-snappable {
+  opacity: 0.95;
+  filter: none;
+  cursor: pointer;
+}
+
+.marker-ghost-snappable .marker-icon-wrapper {
+  border-color: #ff4655;
+  box-shadow: 0 0 0 3px rgba(255, 70, 85, 0.25);
+}
+
+.marker-ghost-snappable:hover .marker-icon-wrapper {
+  transform: scale(1.18);
+  box-shadow: 0 0 14px rgba(255, 70, 85, 0.8);
+}
+
+/* 站位 → 落点的轨迹线：圆点沿弧线从站位流向落点 */
+.vp-link-flow {
+  animation: vp-link-flow 0.9s linear infinite;
+}
+
+@keyframes vp-link-flow {
+  to {
+    stroke-dashoffset: -18;
+  }
+}
+
+/* 地图底部状态提示条 */
+.vp-focus-hint {
+  animation: vp-hint-in 600ms linear(0, 0.089, 0.2809, 0.4953, 0.6868, 0.8358, 0.9391, 1.0021, 1.0343, 1.0455, 1.0439, 1.0361, 1.0262, 1.017, 1.0095, 1.0041, 1.0006, 0.9988, 0.998, 1) both;
+}
+
+@keyframes vp-hint-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.96);
+  }
+
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.vp-dot-pulse {
+  animation: vp-dot-pulse 1.4s ease-in-out infinite;
+}
+
+@keyframes vp-dot-pulse {
+  50% {
+    opacity: 0.35;
+  }
+}
+
+/* 同一对站位与落点有多条点位时的选择弹层 */
+.vp-chooser-popup .leaflet-popup-content-wrapper {
+  border-radius: 12px;
+  background: rgba(15, 25, 35, 0.96);
+  border: 1px solid rgba(255, 70, 85, 0.6);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.6);
+}
+
+.vp-chooser-popup .leaflet-popup-content {
+  margin: 6px;
+  font-family: inherit;
+}
+
+.vp-chooser-popup .leaflet-popup-tip {
+  background: rgba(255, 70, 85, 0.6);
+}
+
+.vp-chooser-head {
+  padding: 4px 8px 6px;
+  font-size: 11px;
+  color: #9ca3af;
+}
+
+.vp-chooser-item {
+  display: block;
+  width: 100%;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: transparent;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 700;
+  text-align: left;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  cursor: pointer;
+  transition: background-color 0.15s, color 0.15s;
+}
+
+.vp-chooser-item:hover,
+.vp-chooser-item:focus-visible {
+  background: rgba(255, 70, 85, 0.18);
+  color: #ff4655;
+  outline: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .vp-link-flow,
+  .marker-focus::before,
+  .vp-focus-hint,
+  .vp-dot-pulse {
+    animation: none;
+  }
+
+  .marker-icon-wrapper {
+    transition-duration: 0.01ms;
+  }
+}
+
+/* 区块：特工网格。 */
+.agent-item {
+  transition: all 0.2s;
+  border: 1px solid transparent;
+}
+
+.agent-item img {
+  object-fit: contain;
+}
+
+.agent-item:hover {
+  border-color: rgba(255, 255, 255, 0.5);
+  transform: scale(1.05);
+}
+
+.agent-item.selected {
+  border-color: #ff4655;
+  background: rgba(255, 70, 85, 0.2);
+  box-shadow: 0 0 10px rgba(255, 70, 85, 0.2);
+}
+
+/* 区块：数量角标。 */
+.count-badge {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  font-size: 9px;
+  font-weight: bold;
+  padding: 0 4px;
+  border-radius: 4px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.8);
+  pointer-events: none;
+}
+
+.count-has-data {
+  background: #ff4655;
+  color: white;
+}
+
+.count-empty {
+  background: #333;
+  color: #888;
+}
+
+/* 区块：技能图标。 */
+.ability-icon {
+  transition: all 0.2s;
+  opacity: 0.6;
+  filter: grayscale(0.8);
+  border-bottom: 2px solid transparent;
+}
+
+.ability-icon:hover {
+  opacity: 1;
+  filter: grayscale(0);
+}
+
+.ability-icon.selected {
+  opacity: 1;
+  filter: grayscale(0);
+  border-bottom: 2px solid #ff4655;
+}
+
+/* 区块：地图卡片。 */
+.map-card {
+  transition: all 0.2s;
+}
+
+.map-card:hover {
+  transform: scale(1.02);
+  border-color: #ff4655;
+}
+
+/* 区块：通用 UI 工具类。 */
+.glass {
+  background: rgba(31, 35, 38, 0.9);
+  backdrop-filter: blur(10px);
+}
+
+.lightbox-img {
+  max-height: 90vh;
+  max-width: 90vw;
+  object-fit: contain;
+  box-shadow: 0 0 30px rgba(0, 0, 0, 0.8);
+}
+
+/* 区块：动画。 */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.modal-content {
+  animation: fadeIn 0.2s ease-out;
+}
+
+/* 区块：iPad 横屏抽屉与安全区。 */
+.tablet-fab-safe {
+  right: calc(0.75rem + var(--vp-safe-right));
+}
+
+.tablet-drawer-panel {
+  padding-bottom: var(--vp-safe-bottom);
+}
+
+.tablet-bottom-safe {
+  padding-bottom: max(0.5rem, var(--vp-safe-bottom));
+}
