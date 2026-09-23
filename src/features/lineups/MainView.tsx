@@ -64,6 +64,8 @@ type MapProps = {
   selectedAbilityIndex: number | null;
   onViewLineup: (id: string) => void;
   isFlipped: boolean;
+  snapLineups: BaseLineup[];
+  onCreateFromPoint: (kind: 'stand' | 'land', pos: { lat: number; lng: number }, lineupIds: string[]) => void;
 };
 
 type QuickActionsProps = {
@@ -221,6 +223,8 @@ const MainView: React.FC<Props> = ({ activeTab, clearSelection, left, map, quick
           }}
           isFlipped={map.isFlipped}
           showErrorMarking={true}
+          snapLineups={map.snapLineups}
+          onCreateFromPoint={isDesktop && right.userId ? map.onCreateFromPoint : undefined}
         />
 
         {!isAndroidMobile && (

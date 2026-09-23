@@ -42,6 +42,8 @@ type Params = {
   setPlacingType: React.Dispatch<React.SetStateAction<'agent' | 'skill' | null>>;
   onViewLineup: (id: string) => void;
   isFlipped: boolean;
+  snapLineups: BaseLineup[];
+  onCreateFromPoint: (kind: 'stand' | 'land', pos: { lat: number; lng: number }, lineupIds: string[]) => void;
   isActionMenuOpen: boolean;
   onToggleActions: () => void;
   onImageBedConfig: () => void;
@@ -124,7 +126,8 @@ export function buildMainViewProps(params: Params): React.ComponentProps<typeof 
       selectedAbilityIndex: params.selectedAbilityIndex,
       onViewLineup: params.onViewLineup,
       isFlipped: params.isFlipped,
-
+      snapLineups: params.snapLineups,
+      onCreateFromPoint: params.onCreateFromPoint,
     },
     quickActions: {
       isOpen: params.isActionMenuOpen,

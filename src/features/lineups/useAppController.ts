@@ -16,7 +16,8 @@ import { useLineupFiltering } from '../../hooks/useLineupFiltering';
 import { useModalState } from '../../hooks/useModalState';
 import { usePinnedLineups } from '../../hooks/usePinnedLineups';
 import { useLineupDownload } from '../../hooks/useLineupDownload';
-import { AgentOption, BaseLineup, LibraryMode, SharedLineup, MapOption } from '../../types/lineup';
+import { AgentOption, BaseLineup, LibraryMode, SharedLineup, MapOption, LineupPosition } from '../../types/lineup';
+import { createEmptyLineup, fillFormFromPoint } from './lineupHelpers';
 import { useMapInfo } from './controllers/useMapInfo';
 import { useActionMenu } from './controllers/useActionMenu';
 import { useAppLifecycle } from './controllers/useAppLifecycle';
@@ -280,6 +281,39 @@ export function useAppController() {
     lineups,
   });
 
+  // 新增/编辑时，地图上可点选复用的已有站位/落点（同地图、同特工、同攻防）
+  const snapLineups = useMemo(() => {
+    if (activeTab !== 'create' || !selectedAgent) return [];
+    return allMapLineups.filter(
+      (l) =>
+        l.agentName === selectedAgent.displayName &&
+        (selectedSide === 'all' || l.side === selectedSide) &&
+        l.id !== editingLineupId,
+    );
+  }, [activeTab, selectedAgent, selectedSide, allMapLineups, editingLineupId]);
+
+  // 从地图上聚焦的站位（或落点）出发新增点位：这一端直接定好，接着去标注另一端
+  const handleCreateFromPoint = useCallback(
+    (kind: 'stand' | 'land', pos: LineupPosition, lineupIds: string[]) => {
+      const sources = lineupIds
+        .map((id) => orderedLineups.find((l) => l.id === id))
+        .filter((l): l is BaseLineup => Boolean(l));
+      const anchor = sources[0];
+      if (!anchor) return;
+      handleTabSwitch('create');
+      if (selectedAgent?.displayName !== anchor.agentName) {
+        const agentObj = agents.find((a) => a.displayName === anchor.agentName);
+        if (agentObj) setSelectedAgent(agentObj);
+      }
+      setSelectedSide(anchor.side);
+      if (kind === 'land') setSelectedAbilityIndex(anchor.abilityIndex);
+      const posField = kind === 'stand' ? 'agentPos' : 'skillPos';
+      setNewLineupData(fillFormFromPoint({ ...createEmptyLineup(), [posField]: { ...pos } }, kind, sources));
+      setPlacingType(kind === 'stand' ? 'skill' : 'agent');
+    },
+    [orderedLineups, handleTabSwitch, selectedAgent, agents, setSelectedAgent, setSelectedSide, setSelectedAbilityIndex, setNewLineupData, setPlacingType],
+  );
+
   const { handleRequestDelete, performDelete, handleClearAll, performClearAll, performClearSelectedAgent } = useDeletionController({
     isGuest,
     userId,
@@ -479,6 +513,8 @@ export function useAppController() {
       if (lineup) setViewingLineup(lineup);
     },
     isFlipped,
+    snapLineups,
+    onCreateFromPoint: handleCreateFromPoint,
     isActionMenuOpen,
     onToggleActions: () => setIsActionMenuOpen((v) => !v),
     onImageBedConfig: handleImageBedConfig,

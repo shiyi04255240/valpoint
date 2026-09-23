@@ -69,7 +69,7 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275), opacity 0.25s ease, filter 0.25s ease;
 }
 
 .marker-icon-wrapper {
@@ -83,7 +83,8 @@ body {
   background: #1f2326;
   border: 2px solid white;
   overflow: hidden;
-  transition: all 0.2s;
+  transition: border-color 0.2s, box-shadow 0.2s, opacity 0.2s,
+    transform 600ms linear(0, 0.089, 0.2809, 0.4953, 0.6868, 0.8358, 0.9391, 1.0021, 1.0343, 1.0455, 1.0439, 1.0361, 1.0262, 1.017, 1.0095, 1.0041, 1.0006, 0.9988, 0.998, 1);
 }
 
 .marker-img {
@@ -105,9 +106,199 @@ body {
   transform: scale(1.2);
 }
 
+/* 无关的点：变暗、缩小且不可点击，点击会穿透到地图（地图点击即恢复原状） */
 .marker-inactive {
-  opacity: 0.6;
-  filter: grayscale(0.5);
+  opacity: 0.22;
+  filter: grayscale(1) brightness(0.8);
+}
+
+.leaflet-marker-icon.marker-inactive {
+  pointer-events: none !important;
+}
+
+.marker-inactive .marker-icon-wrapper {
+  transform: scale(0.82);
+  box-shadow: none;
+}
+
+/* 被点击聚焦的站位/落点：外圈脉冲 */
+.marker-focus .marker-icon-wrapper {
+  transform: scale(1.3);
+  box-shadow: 0 0 0 3px rgba(15, 25, 35, 0.9), 0 0 22px rgba(255, 70, 85, 0.95);
+}
+
+.marker-focus::before {
+  content: '';
+  position: absolute;
+  inset: -7px;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 70, 85, 0.9);
+  pointer-events: none;
+  animation: vp-marker-pulse 1.8s ease-out infinite;
+}
+
+@keyframes vp-marker-pulse {
+  0% {
+    transform: scale(0.85);
+    opacity: 0.9;
+  }
+
+  100% {
+    transform: scale(1.6);
+    opacity: 0;
+  }
+}
+
+/* 关联数量角标：一个站位连着几个落点（或反过来） */
+.marker-link-badge {
+  position: absolute;
+  top: -5px;
+  right: -7px;
+  z-index: 2;
+  min-width: 17px;
+  height: 17px;
+  padding: 0 4px;
+  border-radius: 9px;
+  border: 2px solid #0f1923;
+  background: #ff4655;
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 13px;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+  pointer-events: none;
+  transition: transform 0.25s ease;
+}
+
+.marker-active .marker-link-badge {
+  transform: translate(4px, -4px);
+}
+
+/* 新增/编辑时显示的已有点：可复用的一类亮起，另一类淡出 */
+.marker-ghost {
+  opacity: 0.35;
+  filter: grayscale(0.7);
+}
+
+.marker-ghost .marker-icon-wrapper {
+  border-style: dashed;
+  border-color: rgba(255, 255, 255, 0.7);
+  box-shadow: none;
+}
+
+.marker-ghost-snappable {
+  opacity: 0.95;
+  filter: none;
+  cursor: pointer;
+}
+
+.marker-ghost-snappable .marker-icon-wrapper {
+  border-color: #ff4655;
+  box-shadow: 0 0 0 3px rgba(255, 70, 85, 0.25);
+}
+
+.marker-ghost-snappable:hover .marker-icon-wrapper {
+  transform: scale(1.18);
+  box-shadow: 0 0 14px rgba(255, 70, 85, 0.8);
+}
+
+/* 站位 → 落点的轨迹线：圆点沿弧线从站位流向落点 */
+.vp-link-flow {
+  animation: vp-link-flow 0.9s linear infinite;
+}
+
+@keyframes vp-link-flow {
+  to {
+    stroke-dashoffset: -18;
+  }
+}
+
+/* 地图底部状态提示条 */
+.vp-focus-hint {
+  animation: vp-hint-in 600ms linear(0, 0.089, 0.2809, 0.4953, 0.6868, 0.8358, 0.9391, 1.0021, 1.0343, 1.0455, 1.0439, 1.0361, 1.0262, 1.017, 1.0095, 1.0041, 1.0006, 0.9988, 0.998, 1) both;
+}
+
+@keyframes vp-hint-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.96);
+  }
+
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.vp-dot-pulse {
+  animation: vp-dot-pulse 1.4s ease-in-out infinite;
+}
+
+@keyframes vp-dot-pulse {
+  50% {
+    opacity: 0.35;
+  }
+}
+
+/* 同一对站位与落点有多条点位时的选择弹层 */
+.vp-chooser-popup .leaflet-popup-content-wrapper {
+  border-radius: 12px;
+  background: rgba(15, 25, 35, 0.96);
+  border: 1px solid rgba(255, 70, 85, 0.6);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.6);
+}
+
+.vp-chooser-popup .leaflet-popup-content {
+  margin: 6px;
+  font-family: inherit;
+}
+
+.vp-chooser-popup .leaflet-popup-tip {
+  background: rgba(255, 70, 85, 0.6);
+}
+
+.vp-chooser-head {
+  padding: 4px 8px 6px;
+  font-size: 11px;
+  color: #9ca3af;
+}
+
+.vp-chooser-item {
+  display: block;
+  width: 100%;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: transparent;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 700;
+  text-align: left;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  cursor: pointer;
+  transition: background-color 0.15s, color 0.15s;
+}
+
+.vp-chooser-item:hover,
+.vp-chooser-item:focus-visible {
+  background: rgba(255, 70, 85, 0.18);
+  color: #ff4655;
+  outline: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .vp-link-flow,
+  .marker-focus::before,
+  .vp-focus-hint,
+  .vp-dot-pulse {
+    animation: none;
+  }
+
+  .marker-icon-wrapper {
+    transition-duration: 0.01ms;
+  }
 }
 
 /* 区块：特工网格。 */

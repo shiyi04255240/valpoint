@@ -80,6 +80,56 @@ export const createEmptyLineup = (): NewLineupForm => ({
   enableAim2: false,
 });
 
+type PointSource = Pick<BaseLineup, 'standImg' | 'standDesc' | 'stand2Img' | 'stand2Desc' | 'landImg' | 'landDesc'>;
+
+/**
+ * 复用已有站位/落点时，把它的配图与说明带进表单。
+ * 只在对应栏目还空着时填写，不覆盖已经填好的内容；sources 按创建时间从早到晚排列，优先取最新一条。
+ */
+export const fillFormFromPoint = (
+  form: NewLineupForm,
+  kind: 'stand' | 'land',
+  sources: PointSource[],
+): NewLineupForm => {
+  const newestFirst = [...sources].reverse();
+  if (kind === 'stand') {
+    if (form.standImg || form.standDesc || form.stand2Img || form.stand2Desc) return form;
+    const src = newestFirst.find((s) => s.standImg || s.standDesc || s.stand2Img || s.stand2Desc);
+    if (!src) return form;
+    return {
+      ...form,
+      standImg: src.standImg || '',
+      standDesc: src.standDesc || '',
+      stand2Img: src.stand2Img || '',
+      stand2Desc: src.stand2Desc || '',
+      enableStand2: form.enableStand2 || !!(src.stand2Img || src.stand2Desc),
+    };
+  }
+  if (form.landImg || form.landDesc) return form;
+  const src = newestFirst.find((s) => s.landImg || s.landDesc);
+  if (!src) return form;
+  return { ...form, landImg: src.landImg || '', landDesc: src.landDesc || '' };
+};
+
+/** 站位/落点各自对应的表单栏目 */
+export const POINT_FORM_FIELDS = {
+  stand: ['standImg', 'standDesc', 'stand2Img', 'stand2Desc', 'enableStand2'],
+  land: ['landImg', 'landDesc'],
+} as const satisfies Record<'stand' | 'land', readonly (keyof NewLineupForm)[]>;
+
+/** 撤掉之前自动带入、且用户没有改动过的内容 */
+export const clearAutoFilledFields = (
+  form: NewLineupForm,
+  filled: Partial<Record<keyof NewLineupForm, unknown>>,
+): NewLineupForm => {
+  const next = { ...form };
+  (Object.keys(filled) as (keyof NewLineupForm)[]).forEach((field) => {
+    if (form[field] !== filled[field]) return;
+    (next as Record<string, unknown>)[field] = typeof filled[field] === 'boolean' ? false : '';
+  });
+  return next;
+};
+
 type WritableLineup = {
   title: string;
   mapName: string;
