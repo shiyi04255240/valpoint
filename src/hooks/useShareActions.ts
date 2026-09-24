@@ -11,6 +11,7 @@ import { useState, useCallback } from 'react';
 import { supabase } from '../supabaseClient';
 import { upsertShared } from '../services/shared';
 import { findLineupByClone } from '../services/lineups';
+import { applyTransferredImagesApi } from '../services/points';
 import { transferImage } from '../lib/imageBed';
 import { ImageBedConfig } from '../types/imageBed';
 import { BaseLineup, SharedLineup, LineupDbPayload } from '../types/lineup';
@@ -333,7 +334,16 @@ export const useShareActions = ({
               });
               if (Object.keys(replaced).length) {
                 const dbReplaced = normalizeImageKeysForDb(replaced);
-                await updateLineup(inserted.id, { ...dbReplaced, updated_at: new Date().toISOString() });
+                if (inserted.standId || inserted.landId) {
+                  // 个人库已使用独立的站位 / 落点：站位图、落点图要改在站位 / 落点上，所有相关连线才会一起更新
+                  await applyTransferredImagesApi(
+                    inserted,
+                    { stand_img: data.standImg, stand2_img: data.stand2Img, land_img: data.landImg },
+                    dbReplaced,
+                  );
+                } else {
+                  await updateLineup(inserted.id, { ...dbReplaced, updated_at: new Date().toISOString() });
+                }
                 await fetchLineups(userId);
               }
               if (failed.length) {

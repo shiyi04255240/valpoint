@@ -29,6 +29,34 @@ import { BaseLineup, SharedLineup, MapOption, LineupSide, NewLineupForm, LineupD
 import { ImageBedConfig } from '../../types/imageBed';
 import { ImageProcessingSettings } from '../../types/imageProcessing';
 import { LightboxImage } from '../../types/ui';
+import { AgentOption, PointForm } from '../../types/lineup';
+import { getAbilityIcon, getAbilityList } from '../../utils/abilityIcons';
+import type { PointConfirmState, PointEditorState } from './controllers/usePointController';
+
+const ABILITY_KEYS = ['C', 'Q', 'E', 'X'];
+
+/** 站位 / 落点 / 连线的编辑弹窗与删除确认 */
+export type PointModalsProps = {
+  editor: PointEditorState | null;
+  pointForm: PointForm;
+  setPointForm: React.Dispatch<React.SetStateAction<PointForm>>;
+  linkForm: NewLineupForm;
+  setLinkForm: React.Dispatch<React.SetStateAction<NewLineupForm>>;
+  isSaving: boolean;
+  onSave: () => void;
+  onClose: () => void;
+  onDelete: (() => void) | null;
+  /** 落点可选的技能来自这个角色 */
+  editorAgent: AgentOption | null;
+  confirm: PointConfirmState | null;
+  onConfirmClose: () => void;
+};
+
+const POINT_EDITOR_TITLE = {
+  stand: ['新建站位', '编辑站位'],
+  land: ['新建落点', '编辑落点'],
+  link: ['编辑连线', '编辑连线'],
+} as const;
 
 type Props = {
   isAuthModalOpen: boolean;
@@ -113,6 +141,7 @@ type Props = {
   totalMapLineups: number;
   onSubmitLineup?: (lineupId: string) => void;
   isAdmin?: boolean;
+  pointModals?: PointModalsProps;
 };
 
 const AppModals: React.FC<Props> = ({
@@ -198,7 +227,18 @@ const AppModals: React.FC<Props> = ({
   totalMapLineups,
   onSubmitLineup,
   isAdmin,
+  pointModals,
 }) => {
+  const pointEditor = pointModals?.editor || null;
+  const abilityOptions = pointModals?.editorAgent
+    ? getAbilityList(pointModals.editorAgent).map((ability, index) => ({
+      index,
+      icon: getAbilityIcon(pointModals.editorAgent as AgentOption, index),
+      name: (ability as { displayName?: string }).displayName || ability.name || '',
+      key: ABILITY_KEYS[index] || String(index + 1),
+    }))
+    : [];
+
   return (
     <>
       <BatchDownloadModal
@@ -300,6 +340,40 @@ const AppModals: React.FC<Props> = ({
         setAlertMessage={setAlertMessage}
         imageProcessingSettings={imageProcessingSettings}
       />
+
+      {pointModals && pointEditor && (
+        <EditorModal
+          isEditorOpen
+          mode={pointEditor.mode}
+          headerTitle={POINT_EDITOR_TITLE[pointEditor.mode][pointEditor.editingId ? 1 : 0]}
+          editingLineupId={pointEditor.editingId}
+          newLineupData={pointEditor.mode === 'link' ? pointModals.linkForm : pointModals.pointForm}
+          setNewLineupData={pointEditor.mode === 'link' ? pointModals.setLinkForm : pointModals.setPointForm}
+          handleEditorSave={pointModals.onSave}
+          onClose={pointModals.onClose}
+          selectedSide={selectedSide}
+          setSelectedSide={setSelectedSide}
+          imageBedConfig={imageBedConfig}
+          setAlertMessage={setAlertMessage}
+          imageProcessingSettings={imageProcessingSettings}
+          abilityOptions={abilityOptions}
+          isSaving={pointModals.isSaving}
+          onDelete={pointModals.onDelete}
+        />
+      )}
+
+      {pointModals?.confirm && (
+        <AlertModal
+          variant={pointModals.confirm.variant || 'danger'}
+          title={pointModals.confirm.title}
+          message={pointModals.confirm.message}
+          actionLabel={pointModals.confirm.actionLabel}
+          onAction={pointModals.confirm.onConfirm}
+          secondaryLabel="取消"
+          onSecondary={pointModals.onConfirmClose}
+          onClose={pointModals.onConfirmClose}
+        />
+      )}
 
       <ViewerModal
         viewingLineup={viewingLineup}

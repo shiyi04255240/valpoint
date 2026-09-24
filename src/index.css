@@ -81,7 +81,8 @@ body {
   border-radius: 50%;
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.6);
   background: #1f2326;
-  border: 2px solid white;
+  /* 个人库里站位外圈是它的连线颜色，落点跟随所连站位 */
+  border: 2px solid var(--vp-ring, white);
   overflow: hidden;
   transition: border-color 0.2s, box-shadow 0.2s, opacity 0.2s,
     transform 600ms linear(0, 0.089, 0.2809, 0.4953, 0.6868, 0.8358, 0.9391, 1.0021, 1.0343, 1.0455, 1.0439, 1.0361, 1.0262, 1.017, 1.0095, 1.0041, 1.0006, 0.9988, 0.998, 1);
@@ -281,6 +282,25 @@ body {
   transition: background-color 0.15s, color 0.15s;
 }
 
+.vp-chooser-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.vp-chooser-dot {
+  width: 8px;
+  height: 8px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: #6b7280;
+}
+
+.vp-chooser-dot:empty + span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 .vp-chooser-item:hover,
 .vp-chooser-item:focus-visible {
   background: rgba(255, 70, 85, 0.18);
@@ -288,11 +308,72 @@ body {
   outline: none;
 }
 
+/* 站位 / 落点详情面板：整体滑入，连线卡片依次出现 */
+.vp-panel-in {
+  animation: vp-panel-in 600ms linear(0, 0.089, 0.2809, 0.4953, 0.6868, 0.8358, 0.9391, 1.0021, 1.0343, 1.0455, 1.0439, 1.0361, 1.0262, 1.017, 1.0095, 1.0041, 1.0006, 0.9988, 0.998, 1) both;
+}
+
+@keyframes vp-panel-in {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.vp-card-in {
+  animation: vp-card-in 280ms ease-out both;
+}
+
+@keyframes vp-card-in {
+  from {
+    opacity: 0;
+    transform: translateX(8px);
+  }
+
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* 落点标签 A / B / C */
+.marker-label-badge {
+  position: absolute;
+  bottom: -4px;
+  right: -6px;
+  z-index: 2;
+  width: 15px;
+  height: 15px;
+  border-radius: 50%;
+  border: 2px solid #0f1923;
+  background: #f0c75e;
+  color: #1a1f26;
+  font-size: 9px;
+  font-weight: 900;
+  line-height: 11px;
+  text-align: center;
+  pointer-events: none;
+}
+
+/* 连线工具：已选中的起点 */
+.marker-link-source .marker-icon-wrapper {
+  border-color: #f0c75e;
+  box-shadow: 0 0 0 3px rgba(240, 199, 94, 0.35), 0 0 18px rgba(240, 199, 94, 0.7);
+  transform: scale(1.25);
+}
+
 @media (prefers-reduced-motion: reduce) {
   .vp-link-flow,
   .marker-focus::before,
   .vp-focus-hint,
-  .vp-dot-pulse {
+  .vp-dot-pulse,
+  .vp-panel-in,
+  .vp-card-in {
     animation: none;
   }
 

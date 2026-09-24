@@ -10,6 +10,7 @@
 import React from 'react';
 import { User } from '@supabase/supabase-js';
 import MainView from '../MainView';
+import type { PointMapProps, PointPanelProps, PointToolProps } from '../MainView';
 import { ActiveTab } from '../../../types/app';
 import { AgentOption, BaseLineup, LibraryMode, MapOption, NewLineupForm, SharedLineup } from '../../../types/lineup';
 
@@ -44,6 +45,9 @@ type Params = {
   isFlipped: boolean;
   snapLineups: BaseLineup[];
   onCreateFromPoint: (kind: 'stand' | 'land', pos: { lat: number; lng: number }, lineupIds: string[]) => void;
+  pointMap: PointMapProps;
+  pointTools: PointToolProps;
+  pointPanel: PointPanelProps | null;
   isActionMenuOpen: boolean;
   onToggleActions: () => void;
   onImageBedConfig: () => void;
@@ -128,6 +132,7 @@ export function buildMainViewProps(params: Params): React.ComponentProps<typeof 
       isFlipped: params.isFlipped,
       snapLineups: params.snapLineups,
       onCreateFromPoint: params.onCreateFromPoint,
+      pointMap: params.pointMap,
     },
     quickActions: {
       isOpen: params.isActionMenuOpen,
@@ -170,7 +175,9 @@ export function buildMainViewProps(params: Params): React.ComponentProps<typeof 
       pinnedLimit: params.pinnedLimit,
       onSubmitLineup: params.onSubmitLineup,
       isAdmin: params.isAdmin,
+      pointTools: params.pointTools,
     },
+    pointPanel: params.pointPanel,
     hideSharedButton: params.hideSharedButton,
     hideAuthorLinks: params.hideAuthorLinks,
     user: params.user,

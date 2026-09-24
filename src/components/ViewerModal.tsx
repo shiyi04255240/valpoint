@@ -150,6 +150,9 @@ const ViewerModal = ({
                 <span className="text-[12px] text-gray-500 font-mono">
                   {getMapDisplayName(getMapEnglishName(viewingLineup.mapName))}
                 </span>
+                {viewingLineup.isJump && (
+                  <span className="text-[12px] font-black px-2 py-0.5 rounded bg-[#f0c75e] text-[#1a1f26]">跳投</span>
+                )}
               </div>
               <h2 className={`font-bold text-white tracking-tight ${isMobileLayout ? 'text-xl' : (isTabletDesktop ? 'text-[22px]' : 'text-2xl')}`}>
                 {viewingLineup.title}

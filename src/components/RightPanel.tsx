@@ -10,6 +10,13 @@
 // @ts-nocheck
 import React, { useEffect, useMemo, useState } from 'react';
 import Icon from './Icon';
+import { KIND_NAME, pointDisplayName } from '../features/lineups/controllers/usePointController';
+
+const POINT_TOOLS = [
+  { key: 'stand', icon: 'User', label: '放站位' },
+  { key: 'land', icon: 'Target', label: '放落点' },
+  { key: 'link', icon: 'Spline', label: '连线' },
+];
 
 type Props = {
   activeTab: string;
@@ -38,6 +45,10 @@ type Props = {
   isAdmin?: boolean; // 说明：管理员标记。
   layoutMode?: 'desktop' | 'tablet-drawer';
   className?: string;
+  /** 地图上点中站位 / 落点时，查看页显示它的详情而不是点位列表 */
+  detailPanel?: React.ReactNode;
+  /** 新增页的“放站位 / 放落点 / 连线”工具（数据库已升级时启用） */
+  pointTools?: any;
 };
 
 const RightPanel: React.FC<Props> = ({
@@ -67,6 +78,8 @@ const RightPanel: React.FC<Props> = ({
   isAdmin = true,
   layoutMode = 'desktop',
   className = '',
+  detailPanel = null,
+  pointTools = null,
 }) => {
   const isTabletDrawer = layoutMode === 'tablet-drawer';
   const isPadRestricted = isTabletDrawer;
@@ -121,6 +134,9 @@ const RightPanel: React.FC<Props> = ({
         )}
       </div>
 
+      {detailPanel && effectiveActiveTab === 'view' ? (
+        <div className="flex-1 min-h-0 flex flex-col">{detailPanel}</div>
+      ) : (
       <div className="flex-1 overflow-y-auto custom-scrollbar p-4 space-y-6">
 
         {effectiveActiveTab === 'create' ? (
@@ -149,6 +165,68 @@ const RightPanel: React.FC<Props> = ({
               </div>
             </div>
 
+            {pointTools?.needsUpgrade && (
+              <div className="rounded-lg border border-amber-400/40 bg-amber-400/10 p-3 text-[12px] leading-relaxed text-amber-200">
+                数据库还没有升级，暂时只能成对新增点位。请先在 Supabase 后台执行项目里的
+                <b className="mx-1">notes/站位落点升级脚本.sql</b>，刷新后即可单独放站位、落点再连线。
+              </div>
+            )}
+
+            {pointTools?.enabled ? (
+              <>
+                <div>
+                  <label className="text-[12px] font-bold text-[#ff4655] uppercase tracking-wider block mb-3">2. 地图工具</label>
+                  <div className="grid grid-cols-3 gap-2">
+                    {POINT_TOOLS.map((t) => {
+                      const active = pointTools.tool === t.key;
+                      return (
+                        <button
+                          key={t.key}
+                          type="button"
+                          onClick={() => pointTools.setTool(t.key)}
+                          aria-pressed={active}
+                          className={`p-3 rounded-lg border flex flex-col items-center gap-1.5 transition-all ${active
+                            ? 'bg-[#ff4655] text-white border-transparent shadow-lg shadow-red-900/30'
+                            : 'bg-[#0f1923] border-gray-700 text-gray-400 hover:border-gray-500 hover:text-white'
+                            }`}
+                        >
+                          <Icon name={t.icon} size={22} />
+                          <span className="text-xs font-bold">{t.label}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <div className="mt-3 rounded-lg border border-white/10 bg-[#0f1923] p-3 text-[12px] leading-relaxed text-gray-400 min-h-[64px]" role="status">
+                    {!pointTools.tool && '选一个工具开始。已有的站位、落点都显示在地图上。'}
+                    {pointTools.tool === 'stand' && '在地图上点一下就放一个站位，可以连续放。放好后点这个站位补站位图和说明。'}
+                    {pointTools.tool === 'land' && (pointTools.abilityReady
+                      ? '在地图上点一下就放一个落点（用左侧选中的技能），可以连续放。放好后点这个落点补落点图。'
+                      : '先在左侧“选择使用技能”里选一个技能，再点地图放落点。')}
+                    {pointTools.tool === 'link' && !pointTools.linkSource && '先点一个站位（或落点）作为起点，再点要连的另一端。'}
+                    {pointTools.tool === 'link' && pointTools.linkSource && (
+                      <>
+                        起点：<b className="text-[#f0c75e]">{pointDisplayName(pointTools.linkSource)}</b>
+                        。接着点要连的{KIND_NAME[pointTools.linkSource.kind === 'stand' ? 'land' : 'stand']}，可以连多个。
+                        <button type="button" onClick={pointTools.cancelLinkSource} className="ml-1 font-bold text-[#ff4655] hover:underline">
+                          换起点
+                        </button>
+                      </>
+                    )}
+                  </div>
+                </div>
+
+                <div>
+                  <label className="text-[12px] font-bold text-[#ff4655] uppercase tracking-wider block mb-3">3. 小提示</label>
+                  <ul className="space-y-2 text-[12px] leading-relaxed text-gray-400">
+                    <li>· 一个站位可以连多个落点，一个落点也可以被多个站位连。</li>
+                    <li>· 每个站位的连线是同一种颜色，落点外圈跟着它连的站位变色。</li>
+                    <li>· 点地图上已有的站位或落点，可以编辑它的图文；按住拖动可以移动位置。</li>
+                    <li>· 连好后，到「查看点位」里点站位，在右侧给每条连线补上瞄点图。</li>
+                  </ul>
+                </div>
+              </>
+            ) : (
+            <>
             <div>
               <label className="text-[12px] font-bold text-[#ff4655] uppercase tracking-wider block mb-3">2. 地图标注工具</label>
               <div className="grid grid-cols-2 gap-3">
@@ -193,6 +271,8 @@ const RightPanel: React.FC<Props> = ({
               </button>
               <p className="text-[12px] text-gray-500 mt-2 text-center">添加标题、说明和截图</p>
             </div>
+            </>
+            )}
           </div>
         ) : (
           <div className="h-full flex flex-col">
@@ -366,6 +446,7 @@ const RightPanel: React.FC<Props> = ({
           </div>
         )}
       </div>
+      )}
     </div>
   );
 };

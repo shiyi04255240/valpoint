@@ -45,6 +45,76 @@ export type BaseLineup = {
   clonedFrom?: string | null;
   userId?: string | null;
   creatorId?: string | null; // 点位创建者的 custom_id
+  /** 连线的起点站位（个人库） */
+  standId?: string | null;
+  /** 连线的终点落点（个人库） */
+  landId?: string | null;
+  /** 是否需要跳投 */
+  isJump?: boolean;
+};
+
+export type PointKind = 'stand' | 'land';
+export type PointLabel = 'A' | 'B' | 'C';
+
+/** 个人库中可单独存在的站位 / 落点 */
+export type LineupPoint = {
+  id: string;
+  userId: string;
+  kind: PointKind;
+  mapName: string;
+  agentName: string;
+  agentIcon?: string | null;
+  side: LineupSide;
+  /** 落点对应的技能；站位为 null */
+  abilityIndex: number | null;
+  skillIcon?: string | null;
+  pos: LineupPosition;
+  title: string;
+  label?: PointLabel | null;
+  standImg?: string | null;
+  standDesc?: string | null;
+  stand2Img?: string | null;
+  stand2Desc?: string | null;
+  landImg?: string | null;
+  landDesc?: string | null;
+  createdAt?: string | null;
+  updatedAt?: string | null;
+};
+
+export type PointDbPayload = {
+  user_id: string;
+  kind: PointKind;
+  map_name: string;
+  agent_name: string;
+  agent_icon?: string | null;
+  side: LineupSide;
+  ability_index?: number | null;
+  skill_icon?: string | null;
+  pos: LineupPosition;
+  title: string;
+  label?: PointLabel | null;
+  stand_img?: string | null;
+  stand_desc?: string | null;
+  stand2_img?: string | null;
+  stand2_desc?: string | null;
+  land_img?: string | null;
+  land_desc?: string | null;
+};
+
+/** 站位 / 落点编辑表单 */
+export type PointForm = {
+  kind: PointKind;
+  pos: LineupPosition | null;
+  title: string;
+  abilityIndex: number | null;
+  label: PointLabel | null;
+  standImg: string;
+  standDesc: string;
+  stand2Img: string;
+  stand2Desc: string;
+  landImg: string;
+  landDesc: string;
+  enableStand2: boolean;
 };
 
 export type SharedLineup = BaseLineup & {
@@ -88,6 +158,7 @@ export type NewLineupForm = {
   authorUid: string;
   enableStand2: boolean;
   enableAim2: boolean;
+  isJump?: boolean;
 };
 
 export type LineupDbPayload = {
@@ -119,4 +190,7 @@ export type LineupDbPayload = {
   creator_id?: string | null; // 点位创建者的 custom_id
   created_at?: string | null;
   updated_at?: string | null;
+  stand_id?: string | null;
+  land_id?: string | null;
+  is_jump?: boolean;
 };

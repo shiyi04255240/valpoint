@@ -9,12 +9,14 @@
 
 import React from 'react';
 import AppModals from '../AppModals';
+import type { PointModalsProps } from '../AppModals';
 import { MapOption, NewLineupForm, SharedLineup, BaseLineup, LibraryMode, LineupDbPayload } from '../../../types/lineup';
 import { ImageBedConfig } from '../../../types/imageBed';
 import { ImageProcessingSettings } from '../../../types/imageProcessing';
 import { LightboxImage } from '../../../types/ui';
 
 type Params = {
+  pointModals?: PointModalsProps;
   isAuthModalOpen: boolean;
   userId: string | null;
   targetUserId: string;
@@ -103,6 +105,7 @@ type Params = {
 
 export function buildModalProps(params: Params): React.ComponentProps<typeof AppModals> {
   return {
+    pointModals: params.pointModals,
     isAuthModalOpen: params.isAuthModalOpen,
     userId: params.userId,
     targetUserId: params.targetUserId,

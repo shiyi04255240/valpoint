@@ -9,6 +9,7 @@
 
 export const TABLE = {
   lineups: 'valorant_lineups',
+  points: 'valorant_points',
   shared: 'valorant_shared',
   errorMarks: 'lineup_error_marks',
 };

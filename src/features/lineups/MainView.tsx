@@ -25,9 +25,55 @@ import { getAbilityList, getAbilityIcon } from '../../utils/abilityIcons';
 
 import LeftPanel from '../../components/LeftPanel';
 import RightPanel from '../../components/RightPanel';
+import PointDetailPanel from '../../components/PointDetailPanel';
 import ICPFooter from '../../components/ICPFooter';
-import { BaseLineup, SharedLineup, AgentOption, MapOption, NewLineupForm, LibraryMode } from '../../types/lineup';
+import { BaseLineup, SharedLineup, AgentOption, MapOption, NewLineupForm, LibraryMode, LineupPoint, LineupPosition } from '../../types/lineup';
 import { ActiveTab } from '../../types/app';
+import type { LightboxImage } from '../../types/ui';
+import type { LinkedItem, PointTool } from './controllers/usePointController';
+
+/** 个人库地图：独立的站位 / 落点与新增页工具（数据库未升级时为空对象） */
+export type PointMapProps = {
+  points?: LineupPoint[];
+  focusedPointId?: string | null;
+  onFocusPoint?: (id: string | null) => void;
+  pointTool?: PointTool | null;
+  linkSourceId?: string | null;
+  onMapPlace?: (pos: LineupPosition) => void;
+  onPointClick?: (id: string) => void;
+  onPointMove?: (id: string, pos: LineupPosition) => void;
+  standColors?: Record<string, string>;
+};
+
+/** 新增页的“放站位 / 放落点 / 连线”工具 */
+export type PointToolProps = {
+  enabled: boolean;
+  /** 数据库还没有执行站位/落点升级脚本 */
+  needsUpgrade: boolean;
+  tool: PointTool | null;
+  setTool: (tool: PointTool | null) => void;
+  linkSource: LineupPoint | null;
+  cancelLinkSource: () => void;
+  /** 左侧已选好技能（放落点需要） */
+  abilityReady: boolean;
+};
+
+/** 地图上点中站位 / 落点后显示的详情面板 */
+export type PointPanelProps = {
+  point: LineupPoint;
+  items: LinkedItem[];
+  canEdit: boolean;
+  onClose: () => void;
+  onOpenLink: (lineupId: string) => void;
+  onEditPoint: () => void;
+  onDeletePoint: () => void;
+  onLinkFrom: () => void;
+  onEditLink: (lineup: BaseLineup) => void;
+  onDeleteLink: (lineup: BaseLineup) => void;
+  onViewImage: (img: LightboxImage) => void;
+  onFocusPoint: (id: string) => void;
+  standColors: Record<string, string>;
+};
 
 type LeftProps = {
   activeTab: ActiveTab;
@@ -66,6 +112,7 @@ type MapProps = {
   isFlipped: boolean;
   snapLineups: BaseLineup[];
   onCreateFromPoint: (kind: 'stand' | 'land', pos: { lat: number; lng: number }, lineupIds: string[]) => void;
+  pointMap: PointMapProps;
 };
 
 type QuickActionsProps = {
@@ -110,11 +157,13 @@ type RightProps = {
   pinnedLimit: number;
   onSubmitLineup?: (lineupId: string) => void;
   isAdmin?: boolean;
+  pointTools: PointToolProps;
 };
 
 type Props = {
   activeTab: ActiveTab;
   clearSelection: () => void;
+  pointPanel: PointPanelProps | null;
   left: LeftProps;
   map: MapProps;
   quickActions: QuickActionsProps;
@@ -127,7 +176,7 @@ type Props = {
   userAvatarUrl?: string | null;
 };
 
-const MainView: React.FC<Props> = ({ activeTab, clearSelection, left, map, quickActions, right, hideSharedButton, hideAuthorLinks, user, onSignOut, onOpenProfile, userAvatarUrl }) => {
+const MainView: React.FC<Props> = ({ activeTab, clearSelection, pointPanel, left, map, quickActions, right, hideSharedButton, hideAuthorLinks, user, onSignOut, onOpenProfile, userAvatarUrl }) => {
   const { isMobile, isTabletLandscape, isIPad, isPortrait } = useDeviceMode();
   const isPadPortrait = isMobile && isIPad && isPortrait;
   const isTabletHybrid = isTabletLandscape || isPadPortrait;
@@ -225,7 +274,16 @@ const MainView: React.FC<Props> = ({ activeTab, clearSelection, left, map, quick
           showErrorMarking={true}
           snapLineups={map.snapLineups}
           onCreateFromPoint={isDesktop && right.userId ? map.onCreateFromPoint : undefined}
+          {...map.pointMap}
+          focusBottomInset={pointPanel && !isDesktop ? Math.round(window.innerHeight * 0.46) : 0}
         />
+
+        {/* 手机 / 平板：点中站位或落点后，详情从底部弹出（只看不改，编辑请用电脑） */}
+        {pointPanel && !isDesktop && activeTab === 'view' && (
+          <div className="absolute inset-x-0 bottom-0 z-30 rounded-t-2xl bg-[#1f2326]/95 backdrop-blur-md border-t border-white/10 shadow-2xl">
+            <PointDetailPanel variant="sheet" {...pointPanel} canEdit={false} />
+          </div>
+        )}
 
         {!isAndroidMobile && (
           <QuickActions
@@ -622,6 +680,8 @@ const MainView: React.FC<Props> = ({ activeTab, clearSelection, left, map, quick
 
       {isDesktop && (
         <RightPanel
+          detailPanel={pointPanel && activeTab === 'view' ? <PointDetailPanel variant="panel" {...pointPanel} /> : null}
+          pointTools={right.pointTools}
           activeTab={right.activeTab}
           handleTabSwitch={(tab) => right.handleTabSwitch(tab as ActiveTab)}
           selectedSide={right.selectedSide}

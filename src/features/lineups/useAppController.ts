@@ -29,6 +29,8 @@ import { buildMainViewProps } from './controllers/useMainViewProps';
 import { buildModalProps } from './controllers/useModalProps';
 import { buildUiProps } from './controllers/useUiProps';
 import { useAppState } from './controllers/useAppState';
+import { usePointController } from './controllers/usePointController';
+import { assignStandColors, selectPointsForCreate, selectPointsForView } from '../../utils/lineupGraph';
 import { useUserProfile } from '../../hooks/useUserProfile';
 import { supabase } from '../../supabaseClient';
 
@@ -150,7 +152,7 @@ export function useAppController() {
   const handleApplyCustomUserId = () => { };
   const handleResetUserId = () => { };
   const handleConfirmUserAuth = async () => { };
-  const { lineups, setLineups, fetchLineups } = useLineups(mapNameZhToEn);
+  const { lineups, setLineups, fetchLineups, points, pointsSupported } = useLineups(mapNameZhToEn);
 
   // Restore Lineup from URL (Deep Link)
   const hasRestoredLineup = React.useRef(false);
@@ -313,6 +315,91 @@ export function useAppController() {
     },
     [orderedLineups, handleTabSwitch, selectedAgent, agents, setSelectedAgent, setSelectedSide, setSelectedAbilityIndex, setNewLineupData, setPlacingType],
   );
+
+  // 数据库已执行站位/落点升级脚本时，个人库使用“独立站位 / 落点 + 连线”的新方式
+  const pointsReady = pointsSupported === true;
+  const pointController = usePointController({
+    isGuest,
+    userId,
+    userCustomId: profile?.custom_id || null,
+    activeTab,
+    selectedMap,
+    selectedAgent,
+    selectedSide,
+    selectedAbilityIndex,
+    agents,
+    points,
+    lineups: orderedLineups,
+    mapNameZhToEn,
+    fetchLineups,
+    setAlertMessage: modal.setAlertMessage,
+    handleTabSwitch,
+    setSelectedSide,
+    setSelectedAgent,
+  });
+
+  const pointScope = useMemo(() => {
+    const mapKey = selectedMap?.displayName || '';
+    return {
+      mapKeys: selectedMap ? [mapKey, mapNameZhToEn[mapKey] || mapKey] : [],
+      agentName: selectedAgent?.displayName ?? null,
+      side: selectedSide,
+      abilityIndex: selectedAbilityIndex,
+    };
+  }, [selectedMap, selectedAgent, selectedSide, selectedAbilityIndex, mapNameZhToEn]);
+
+  const mapPoints = useMemo(() => {
+    if (!pointsReady) return undefined;
+    return activeTab === 'create'
+      ? selectPointsForCreate(points, pointScope)
+      : selectPointsForView(points, orderedLineups, mapLineups, pointScope);
+  }, [pointsReady, activeTab, points, orderedLineups, mapLineups, pointScope]);
+
+  const standColors = useMemo(() => assignStandColors(points), [points]);
+
+  const openLineupViewer = (id: string) => {
+    setSelectedLineupId(id);
+    const lineup = orderedLineups.find((l) => l.id === id);
+    if (lineup) setViewingLineup(lineup);
+  };
+
+  // 查看详情里的“编辑”：连线走新的编辑方式（站位 / 落点图改动会同步到所有相关连线）
+  const handleEditLineup = (lineup: BaseLineup) => {
+    if (pointsReady && lineup.standId && lineup.landId) {
+      setViewingLineup(null);
+      pointController.editLink(lineup);
+      return;
+    }
+    handleEditStart(lineup);
+  };
+
+  const canEditPoints = pointsReady && Boolean(userId) && !isGuest;
+  const focusedPoint = pointController.focusedPoint;
+  const pointPanel = pointsReady && focusedPoint
+    ? {
+      point: focusedPoint,
+      items: pointController.focusedItems,
+      canEdit: canEditPoints,
+      onClose: () => pointController.setFocusedPointId(null),
+      onOpenLink: openLineupViewer,
+      onEditPoint: () => pointController.editPoint(focusedPoint),
+      onDeletePoint: () => pointController.requestDeletePoint(focusedPoint),
+      onLinkFrom: () => pointController.startLinkFrom(focusedPoint),
+      onEditLink: (lineup: BaseLineup) => pointController.editLink(lineup),
+      onDeleteLink: (lineup: BaseLineup) => pointController.requestDeleteLink(lineup),
+      onViewImage: modal.setViewingImage,
+      onFocusPoint: pointController.setFocusedPointId,
+      standColors,
+    }
+    : null;
+
+  const editorPoint = pointController.editor && pointController.editor.mode !== 'link' && pointController.editor.editingId
+    ? points.find((p) => p.id === pointController.editor?.editingId) || null
+    : null;
+  const editorLink = pointController.editor?.mode === 'link'
+    ? orderedLineups.find((l) => l.id === pointController.editor?.editingId) || null
+    : null;
+  const editorAgent = editorPoint ? agents.find((a) => a.displayName === editorPoint.agentName) || selectedAgent : selectedAgent;
 
   const { handleRequestDelete, performDelete, handleClearAll, performClearAll, performClearSelectedAgent } = useDeletionController({
     isGuest,
@@ -500,7 +587,7 @@ export function useAppController() {
     openChangelog: () => modal.setIsChangelogOpen(true),
     mapIcon: getMapUrl(),
     mapCover: getMapCoverUrl(),
-    lineups: mapLineups,
+    lineups: activeTab === 'create' && pointsReady ? allMapLineups : mapLineups,
     selectedLineupId,
     onLineupSelect: setSelectedLineupId,
     newLineupData,
@@ -513,8 +600,31 @@ export function useAppController() {
       if (lineup) setViewingLineup(lineup);
     },
     isFlipped,
-    snapLineups,
+    snapLineups: pointsReady ? [] : snapLineups,
     onCreateFromPoint: handleCreateFromPoint,
+    pointMap: pointsReady
+      ? {
+        points: mapPoints,
+        focusedPointId: pointController.focusedPointId,
+        onFocusPoint: pointController.setFocusedPointId,
+        pointTool: pointController.tool,
+        linkSourceId: pointController.linkSource?.id ?? null,
+        onMapPlace: pointController.handleMapPlace,
+        onPointClick: pointController.handleCreatePointClick,
+        onPointMove: pointController.handlePointMove,
+        standColors,
+      }
+      : {},
+    pointTools: {
+      enabled: pointsReady,
+      needsUpgrade: pointsSupported === false,
+      tool: pointController.tool,
+      setTool: pointController.setTool,
+      linkSource: pointController.linkSource,
+      cancelLinkSource: pointController.cancelLinkSource,
+      abilityReady: selectedAbilityIndex !== null,
+    },
+    pointPanel,
     isActionMenuOpen,
     onToggleActions: () => setIsActionMenuOpen((v) => !v),
     onImageBedConfig: handleImageBedConfig,
@@ -531,9 +641,8 @@ export function useAppController() {
     filteredLineups,
     selectedLineupIdRight: selectedLineupId,
     handleViewLineup: (id: string) => {
-      setSelectedLineupId(id);
-      const lineup = orderedLineups.find((l) => l.id === id);
-      if (lineup) setViewingLineup(lineup);
+      pointController.setFocusedPointId(null);
+      openLineupViewer(id);
     },
     handleDownload,
     handleRequestDelete,
@@ -619,10 +728,28 @@ export function useAppController() {
     viewingLineup,
     setViewingLineup,
     setSelectedLineupId,
-    handleEditStart,
+    handleEditStart: handleEditLineup,
     setViewingImage: modal.setViewingImage,
     getMapEnglishName,
     isGuest,
+    pointModals: {
+      editor: pointController.editor,
+      pointForm: pointController.pointForm,
+      setPointForm: pointController.setPointForm,
+      linkForm: pointController.linkForm,
+      setLinkForm: pointController.setLinkForm,
+      isSaving: pointController.isSaving,
+      onSave: pointController.saveEditor,
+      onClose: pointController.closeEditor,
+      onDelete: editorPoint
+        ? () => pointController.requestDeletePoint(editorPoint)
+        : editorLink
+          ? () => pointController.requestDeleteLink(editorLink)
+          : null,
+      editorAgent,
+      confirm: pointController.confirm,
+      onConfirmClose: pointController.closeConfirm,
+    },
     isChangePasswordOpen: modal.isChangePasswordOpen,
     setIsChangePasswordOpen: modal.setIsChangePasswordOpen,
     isChangingPassword,

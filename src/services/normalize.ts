@@ -8,7 +8,7 @@
  */
 
 import { MAP_TRANSLATIONS } from '../constants/maps';
-import { BaseLineup } from '../types/lineup';
+import { BaseLineup, LineupPoint } from '../types/lineup';
 
 export const normalizeLineup = (raw: any, mapNameZhToEn: Record<string, string>): BaseLineup => {
   const pick = (a: any, b: any) => (a !== undefined ? a : b);
@@ -43,5 +43,31 @@ export const normalizeLineup = (raw: any, mapNameZhToEn: Record<string, string>)
     clonedFrom: pick(raw.cloned_from, raw.clonedFrom),
     userId: pick(raw.user_id, raw.userId),
     creatorId: pick(raw.creator_id, raw.creatorId),
+    standId: pick(raw.stand_id, raw.standId) ?? null,
+    landId: pick(raw.land_id, raw.landId) ?? null,
+    isJump: !!pick(raw.is_jump, raw.isJump),
   };
 };
+
+export const normalizePoint = (raw: any, mapNameZhToEn: Record<string, string>): LineupPoint => ({
+  id: raw.id,
+  userId: raw.user_id,
+  kind: raw.kind,
+  mapName: mapNameZhToEn[raw.map_name] || raw.map_name,
+  agentName: raw.agent_name,
+  agentIcon: raw.agent_icon ?? null,
+  side: raw.side || 'attack',
+  abilityIndex: raw.ability_index ?? null,
+  skillIcon: raw.skill_icon ?? null,
+  pos: raw.pos,
+  title: raw.title || '',
+  label: raw.label ?? null,
+  standImg: raw.stand_img ?? null,
+  standDesc: raw.stand_desc ?? null,
+  stand2Img: raw.stand2_img ?? null,
+  stand2Desc: raw.stand2_desc ?? null,
+  landImg: raw.land_img ?? null,
+  landDesc: raw.land_desc ?? null,
+  createdAt: raw.created_at ?? null,
+  updatedAt: raw.updated_at ?? null,
+});

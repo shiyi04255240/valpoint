@@ -10,6 +10,7 @@
 import { supabase } from '../supabaseClient';
 import { TABLE } from './tables';
 import { normalizeLineup } from './normalize';
+import { clearPointsApi } from './points';
 import { BaseLineup, LineupDbPayload } from '../types/lineup';
 
 export async function fetchLineupsApi(userId: string, mapNameZhToEn: Record<string, string>): Promise<BaseLineup[]> {
@@ -53,9 +54,11 @@ export async function findLineupByClone(userId: string, clonedFrom: string) {
 export async function clearLineupsApi(userId: string) {
   const { error } = await supabase.from(TABLE.lineups).delete().eq('user_id', userId);
   if (error) throw error;
+  await clearPointsApi(userId);
 }
 
 export async function clearLineupsByAgentApi(userId: string, agentName: string) {
   const { error } = await supabase.from(TABLE.lineups).delete().eq('user_id', userId).eq('agent_name', agentName);
   if (error) throw error;
+  await clearPointsApi(userId, agentName);
 }

@@ -23,6 +23,37 @@ const fields = [
   { k: 'land', l: '技能落点图' },
 ];
 
+// 说明：lineup 为原有的整条点位；link 为连线（站位图 / 落点图改动会同步到该站位 / 落点的所有连线）；
+// stand / land 为单独的站位 / 落点。
+const FIELDS_BY_MODE = {
+  lineup: ['stand', 'stand2', 'aim', 'aim2', 'land'],
+  link: ['stand', 'stand2', 'aim', 'aim2', 'land'],
+  stand: ['stand', 'stand2'],
+  land: ['land'],
+};
+
+const SHARED_FIELD_HINT = {
+  stand: '该站位的所有连线共用',
+  stand2: '该站位的所有连线共用',
+  land: '该落点的所有连线共用',
+};
+
+const TITLE_LABEL = {
+  lineup: '标题 (Title)',
+  link: '连线标题',
+  stand: '站位名称',
+  land: '落点名称',
+};
+
+const TITLE_PLACEHOLDER = {
+  lineup: '例如：B区窗户进攻瞬爆烟',
+  link: '例如：A大道跳投侦察箭',
+  stand: '例如：A大道拐角',
+  land: '例如：A包点天堂',
+};
+
+const LABEL_OPTIONS = [null, 'A', 'B', 'C'];
+
 const EditorModal = ({
   isEditorOpen,
   editingLineupId,
@@ -35,8 +66,15 @@ const EditorModal = ({
   imageBedConfig,
   setAlertMessage,
   imageProcessingSettings,
+  mode = 'lineup',
+  headerTitle = '',
+  abilityOptions = [] as Array<{ index: number; icon: string | null; name: string; key: string }>,
+  isSaving = false,
+  onDelete = null as null | (() => void),
 }) => {
   if (!isEditorOpen) return null;
+  const visibleFields = fields.filter((f) => FIELDS_BY_MODE[mode].includes(f.k));
+  const hasSource = mode === 'lineup' || mode === 'link';
   useEscapeClose(isEditorOpen, onClose);
 
   const [showLinkInput, setShowLinkInput] = useState(false);
@@ -260,7 +298,7 @@ const EditorModal = ({
         <div className="flex items-start justify-between gap-3 p-5 border-b border-[#1b1f2a] bg-[#1f2326]/90">
           <div className="space-y-1">
             <h2 className="text-xl font-bold text-white flex items-center gap-2">
-              <Icon name="FileText" className="text-[#ff4655]" /> {editingLineupId ? '编辑图文攻略' : '新增图文攻略'}
+              <Icon name="FileText" className="text-[#ff4655]" /> {headerTitle || (editingLineupId ? '编辑图文攻略' : '新增图文攻略')}
             </h2>
           </div>
           <button
@@ -274,15 +312,78 @@ const EditorModal = ({
         <div className="flex-1 overflow-y-auto p-6 space-y-6 custom-scrollbar">
           <div className="space-y-3">
             <div>
-              <label className="text-xs font-bold text-gray-500 uppercase block mb-2">标题 (Title)</label>
+              <label className="text-xs font-bold text-gray-500 uppercase block mb-2">{TITLE_LABEL[mode]}</label>
               <input
                 className="w-full bg-[#0f1923] border border-[#2a323d] rounded-lg p-3 text-white focus:border-[#ff4655] outline-none transition-colors"
-                placeholder="例如：B区窗户进攻瞬爆烟"
+                placeholder={TITLE_PLACEHOLDER[mode]}
                 value={newLineupData.title}
                 onChange={(e) => setNewLineupData({ ...newLineupData, title: e.target.value })}
                 autoFocus
               />
             </div>
+            {mode === 'land' && (
+              <div className="space-y-2">
+                <div className="text-xs font-bold text-gray-500 uppercase">技能</div>
+                <div className="grid grid-cols-4 gap-2">
+                  {abilityOptions.map((opt) => {
+                    const active = newLineupData.abilityIndex === opt.index;
+                    return (
+                      <button
+                        key={opt.index}
+                        type="button"
+                        onClick={() => setNewLineupData({ ...newLineupData, abilityIndex: opt.index })}
+                        aria-pressed={active}
+                        title={opt.name}
+                        className={`h-14 rounded-lg border flex flex-col items-center justify-center gap-1 transition-colors ${active
+                          ? 'border-[#ff4655] bg-[#ff4655]/15 text-white'
+                          : 'border-[#2a323d] bg-[#0f1923] text-gray-400 hover:border-white/30 hover:text-white'
+                          }`}
+                      >
+                        {opt.icon ? <img src={opt.icon} alt="" className="w-6 h-6 object-contain" /> : <Icon name="Target" size={18} />}
+                        <span className="text-[10px] font-bold">{opt.key}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+                <div className="text-xs font-bold text-gray-500 uppercase pt-2">落点标签（可选）</div>
+                <div className="flex gap-2">
+                  {LABEL_OPTIONS.map((label) => {
+                    const active = (newLineupData.label || null) === label;
+                    return (
+                      <button
+                        key={label || 'none'}
+                        type="button"
+                        onClick={() => setNewLineupData({ ...newLineupData, label })}
+                        aria-pressed={active}
+                        className={`flex-1 h-9 rounded-lg border text-sm font-bold transition-colors ${active
+                          ? 'border-[#f0c75e] bg-[#f0c75e]/15 text-[#f0c75e]'
+                          : 'border-[#2a323d] bg-[#0f1923] text-gray-400 hover:border-white/30 hover:text-white'
+                          }`}
+                      >
+                        {label || '无'}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+            {mode === 'link' && (
+              <button
+                type="button"
+                onClick={() => setNewLineupData({ ...newLineupData, isJump: !newLineupData.isJump })}
+                aria-pressed={!!newLineupData.isJump}
+                className={`w-full h-11 px-3 rounded-lg border flex items-center justify-between text-sm font-bold transition-colors ${newLineupData.isJump
+                  ? 'border-[#f0c75e] bg-[#f0c75e]/10 text-[#f0c75e]'
+                  : 'border-[#2a323d] bg-[#0f1923] text-gray-300 hover:border-white/30'
+                  }`}
+              >
+                <span className="flex items-center gap-2"><Icon name="ArrowUp" size={16} /> 需要跳投</span>
+                <span className={`w-9 h-5 rounded-full p-0.5 transition-colors ${newLineupData.isJump ? 'bg-[#f0c75e]' : 'bg-[#2a323d]'}`}>
+                  <span className={`block w-4 h-4 rounded-full bg-white transition-transform ${newLineupData.isJump ? 'translate-x-4' : ''}`} />
+                </span>
+              </button>
+            )}
+            {mode === 'lineup' && (
             <div className="space-y-2">
               <div className="text-xs font-bold text-gray-500 uppercase">阵营 (Side)</div>
               <div className="w-full flex items-center gap-2 bg-[#0b1220] border border-[#2a323d] rounded-xl px-2 py-2 shadow-inner shadow-black/40">
@@ -308,6 +409,8 @@ const EditorModal = ({
                 </button>
               </div>
             </div>
+            )}
+            {hasSource && (
             <div>
               <div className="bg-[#0f1923] border border-[#2a323d] rounded-xl p-3 space-y-3 shadow-inner shadow-black/30">
                 <div className="flex items-center justify-between gap-2">
@@ -399,6 +502,7 @@ const EditorModal = ({
                 </div>
               )}
             </div>
+            )}
           </div>
 
           <div className="flex items-center justify-between text-xs text-gray-400 uppercase font-bold">
@@ -414,7 +518,7 @@ const EditorModal = ({
           </div>
 
           <div className="grid grid-cols-1 gap-4">
-            {fields.map((field) => {
+            {visibleFields.map((field) => {
               const enabled = field.toggleKey ? newLineupData[field.toggleKey] : true;
               const hasData = newLineupData[`${field.k}Img`] || newLineupData[`${field.k}Desc`];
               const shouldShow = enabled || hasData || !field.toggleKey;
@@ -440,8 +544,13 @@ const EditorModal = ({
               return (
                 <div key={field.k} className="bg-[#11161d] p-4 rounded-lg border border-[#1b1f2a]">
                   <div className="flex items-start justify-between mb-3">
-                    <div className="text-[#ff4655] font-bold text-sm flex items-center gap-2 uppercase tracking-wider">
-                      <Icon name="Image" size={14} /> {field.l}
+                    <div className="min-w-0">
+                      <div className="text-[#ff4655] font-bold text-sm flex items-center gap-2 uppercase tracking-wider">
+                        <Icon name="Image" size={14} /> {field.l}
+                      </div>
+                      {mode === 'link' && SHARED_FIELD_HINT[field.k] && (
+                        <div className="text-[11px] text-gray-500 mt-1">{SHARED_FIELD_HINT[field.k]}</div>
+                      )}
                     </div>
                     {field.toggleKey && (
                       <button
@@ -535,6 +644,15 @@ const EditorModal = ({
           </div>
         </div>
         <div className="p-5 border-t border-[#1b1f2a] flex justify-end gap-3 bg-[#1f2326]/90">
+          {onDelete && (
+            <button
+              type="button"
+              onClick={onDelete}
+              className="mr-auto px-4 py-2 rounded-lg border border-red-500/40 text-sm font-bold text-red-300 hover:bg-red-500/10 hover:text-red-200 transition-colors"
+            >
+              删除
+            </button>
+          )}
           <button
             onClick={onClose}
             className="px-5 py-2 rounded-lg border border-[#2a323d] bg-[#0f1923] text-sm font-bold text-gray-200 hover:border-[#ff4655] hover:text-white hover:bg-white/5 transition-colors"
@@ -543,9 +661,10 @@ const EditorModal = ({
           </button>
           <button
             onClick={handleEditorSave}
-            className="px-6 py-2 rounded-lg text-sm font-bold text-white bg-gradient-to-r from-[#ff5b6b] to-[#ff3c4d] hover:from-[#ff6c7b] hover:to-[#ff4c5e] shadow-lg shadow-red-900/30 transition-all"
+            disabled={isSaving}
+            className="px-6 py-2 rounded-lg text-sm font-bold text-white bg-gradient-to-r from-[#ff5b6b] to-[#ff3c4d] hover:from-[#ff6c7b] hover:to-[#ff4c5e] shadow-lg shadow-red-900/30 transition-all disabled:opacity-60 disabled:cursor-not-allowed"
           >
-            保存
+            {isSaving ? '保存中…' : '保存'}
           </button>
         </div>
       </div>
